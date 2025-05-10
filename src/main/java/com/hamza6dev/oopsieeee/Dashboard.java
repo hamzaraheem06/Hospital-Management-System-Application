@@ -2,11 +2,14 @@ package com.hamza6dev.oopsieeee;
 
 import Appointment.*;
 import Appointment.Appointment.AppointmentStatus;
+import D_P_Interaction.Feedback;
+import D_P_Interaction.Prescription;
 import Notifications.EmailNotification;
 import User.*;
 
 import Exceptions.DuplicateAppointmentException;
 import Exceptions.InvalidAppointmentException;
+import HealthData.Vitals;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -107,7 +110,13 @@ public class Dashboard extends Application {
         Button patientEvaluation = createSidebarButton("Patient Evaluation");
 
         if (user instanceof Doctor) {
-            sidebar.getChildren().addAll(dashboardBtn, patientsBtn, appointmentsBtn, messagesBtn, emailBtn, patientEvaluation);
+            Button vitalsBtn = createSidebarButton("View Vitals");
+            vitalsBtn.setOnAction(_ -> {
+                content.getChildren().clear();
+                content.getChildren().add(createVitalsViewPage());
+            });
+            sidebar.getChildren().addAll(dashboardBtn, patientsBtn, appointmentsBtn, vitalsBtn, messagesBtn, emailBtn,
+                    patientEvaluation);
         } else if (user instanceof Patient) {
             Button uploadVitalsBtn = createSidebarButton("Upload Vitals");
             uploadVitalsBtn.setOnAction(_ -> {
@@ -681,9 +690,6 @@ public class Dashboard extends Application {
         availabilityGrid.setVgap(10);
         availabilityGrid.setHgap(40);
         availabilityGrid.setPadding(new Insets(10, 0, 20, 0));
-
-        availabilityGrid.add(new Label("Available Days:"), 0, 0);
-        availabilityGrid.add(new Label("Monday, Tuesday, Wednesday"), 1, 0);
 
         availabilityGrid.add(new Label("Start Time:"), 0, 1);
         availabilityGrid.add(new Label(String.valueOf(doc.getStartTime())), 1, 1);
@@ -1404,6 +1410,94 @@ public class Dashboard extends Application {
         }
     }
 
+    private VBox createVitalsViewPage() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(20));
+
+        Text heading = new Text("Patient Vitals");
+        heading.setFont(Font.font("Arial", FontWeight.BOLD, 30));
+        heading.setFill(Color.BLUE);
+
+        // Patient selection dropdown
+        ComboBox<Patient> patientSelector = new ComboBox<>();
+        patientSelector.setPromptText("Select a patient");
+
+        // Load patients under this doctor
+        List<Patient> patients = DataFetcher.getAllPatientsForDoctor(user.getUserID());
+        patientSelector.getItems().addAll(patients);
+
+        patientSelector.setCellFactory(param -> new ListCell<Patient>() {
+            @Override
+            protected void updateItem(Patient patient, boolean empty) {
+                super.updateItem(patient, empty);
+                setText(empty || patient == null ? null : patient.getName());
+            }
+        });
+
+        patientSelector.setButtonCell(new ListCell<Patient>() {
+            @Override
+            protected void updateItem(Patient patient, boolean empty) {
+                super.updateItem(patient, empty);
+                setText(empty || patient == null ? null : patient.getName());
+            }
+        });
+
+        // Table for vitals
+        TableView<Vitals> vitalsTable = new TableView<>();
+        vitalsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<Vitals, String> timeCol = new TableColumn<>("Recorded At");
+        timeCol.setCellValueFactory(new PropertyValueFactory<>("recordedAt"));
+
+        TableColumn<Vitals, Integer> heartRateCol = new TableColumn<>("Heart Rate");
+        heartRateCol.setCellValueFactory(new PropertyValueFactory<>("heartRate"));
+
+        TableColumn<Vitals, Integer> oxygenCol = new TableColumn<>("Oxygen Level");
+        oxygenCol.setCellValueFactory(new PropertyValueFactory<>("oxygenLevel"));
+
+        TableColumn<Vitals, String> bpCol = new TableColumn<>("Blood Pressure");
+        bpCol.setCellValueFactory(new PropertyValueFactory<>("bloodPressure"));
+
+        TableColumn<Vitals, Double> tempCol = new TableColumn<>("Temperature");
+        tempCol.setCellValueFactory(new PropertyValueFactory<>("temperature"));
+
+        vitalsTable.getColumns().addAll(timeCol, heartRateCol, oxygenCol, bpCol, tempCol);
+
+        patientSelector.setOnAction(e -> {
+            Patient selected = patientSelector.getValue();
+            if (selected != null) {
+                ObservableList<Vitals> vitals = FXCollections
+                        .observableArrayList(fetchVitalsForPatient(selected.getUserID()));
+                vitalsTable.setItems(vitals);
+            }
+        });
+
+        container.getChildren().addAll(heading, patientSelector, vitalsTable);
+        return container;
+    }
+
+    private List<Vitals> fetchVitalsForPatient(String patientID) {
+        List<Vitals> vitalsList = new ArrayList<>();
+        String query = "SELECT recorded_at, heart_rate, oxygen_level, blood_pressure, temperature FROM vitalsign_history WHERE patient_id = ? ORDER BY recorded_at DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, patientID);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    vitalsList.add(new Vitals(
+                            rs.getTimestamp("recorded_at").toString(),
+                            rs.getInt("heart_rate"),
+                            rs.getInt("oxygen_level"),
+                            rs.getString("blood_pressure"),
+                            rs.getDouble("temperature")));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return vitalsList;
+    }
+
     public VBox createEvaluationPage(String doctorID) {
         VBox mainLayout = new VBox(20);
         mainLayout.setStyle("-fx-padding: 20; -fx-alignment: top-left;");
@@ -1474,7 +1568,150 @@ public class Dashboard extends Application {
             }
         });
 
-        mainLayout.getChildren().addAll(heading, patientDropdown, detailsContainer);
+        TextArea feedbackArea = new TextArea();
+        feedbackArea.setPromptText("Enter feedback for the patient...");
+        feedbackArea.setPrefHeight(100);
+
+        VBox prescriptionContainer = new VBox(10);
+        prescriptionContainer.setPadding(new Insets(10));
+        prescriptionContainer.setStyle("-fx-background-color: #f9f9f9; -fx-padding: 10; -fx-background-radius: 5px;");
+
+        TextField medicationField = new TextField();
+        medicationField.setPromptText("Medication Name");
+
+        TextField dosageField = new TextField();
+        dosageField.setPromptText("Dosage (e.g., 500mg)");
+
+        TextField scheduleField = new TextField();
+        scheduleField.setPromptText("Schedule (e.g., Morning, Evening)");
+
+        Button addMedicationButton = new Button("Add Medication");
+        addMedicationButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
+        ArrayList<String> medications = new ArrayList<>();
+        ArrayList<String> dosages = new ArrayList<>();
+        ArrayList<String> schedules = new ArrayList<>();
+
+        ListView<String> prescriptionList = new ListView<>();
+        prescriptionList.setPrefHeight(150);
+
+        addMedicationButton.setOnAction(e -> {
+            String medication = medicationField.getText();
+            String dosage = dosageField.getText();
+            String schedule = scheduleField.getText();
+            if (!medication.isEmpty() && !dosage.isEmpty() && !schedule.isEmpty()) {
+                String entry = medication + " - " + dosage + " - " + schedule;
+                prescriptionList.getItems().add(entry);
+
+                medications.add(medication);
+                dosages.add(dosage);
+                schedules.add(schedule);
+
+                medicationField.clear();
+                dosageField.clear();
+                scheduleField.clear();
+            } else {
+                AlertDialogueBox.showAlert(Alert.AlertType.WARNING, "Validation Error",
+                        "Please fill out all medication details before adding.");
+            }
+        });
+
+        Button submitButton = new Button("Submit Evaluation");
+        submitButton.setStyle("-fx-background-color: blue; -fx-text-fill: white; -fx-font-weight: bold;");
+
+        submitButton.setOnAction(e -> {
+            String selectedValue = patientDropdown.getSelectionModel().getSelectedItem();
+            if (selectedValue == null || feedbackArea.getText().isEmpty()) {
+                AlertDialogueBox.showAlert(Alert.AlertType.WARNING, "Validation Error",
+                        "Please select a patient and provide feedback.");
+                return;
+            }
+
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                String patientId = selectedValue.split(" - ")[0];
+
+                // Save feedback to the database
+                String feedbackMessage = feedbackArea.getText();
+                String feedbackInsertQuery = "INSERT INTO Feedback (patient_id, doctor_id, feedback_message) " +
+                        "VALUES (?, ?, ?)";
+                PreparedStatement feedbackStmt = conn.prepareStatement(feedbackInsertQuery, Statement.RETURN_GENERATED_KEYS);
+                feedbackStmt.setString(1, patientId);
+                feedbackStmt.setString(2, doctorID);
+                feedbackStmt.setString(3, feedbackMessage);
+                feedbackStmt.executeUpdate();
+
+                ResultSet feedbackGeneratedKeys = feedbackStmt.getGeneratedKeys();
+                int feedbackId = -1;
+                if (feedbackGeneratedKeys.next()) {
+                    feedbackId = feedbackGeneratedKeys.getInt(1);
+                }
+
+                // Create Feedback object
+                Patient selectedPatient = DataFetcher.getPatientData("patient", patientId);
+                Doctor currentDoctor = (Doctor) user;
+                Feedback feedback = new Feedback(selectedPatient, currentDoctor, feedbackMessage);
+
+                // Save prescription to the database (if medications exist)
+                if (!medications.isEmpty()) {
+                    String prescriptionInsertQuery = "INSERT INTO Prescription (patient_id, doctor_id) VALUES (?, ?)";
+                    PreparedStatement prescriptionStmt = conn.prepareStatement(prescriptionInsertQuery,
+                            Statement.RETURN_GENERATED_KEYS);
+                    prescriptionStmt.setString(1, patientId);
+                    prescriptionStmt.setString(2, doctorID);
+                    prescriptionStmt.executeUpdate();
+
+                    ResultSet prescriptionGeneratedKeys = prescriptionStmt.getGeneratedKeys();
+                    int prescriptionId = -1;
+                    if (prescriptionGeneratedKeys.next()) {
+                        prescriptionId = prescriptionGeneratedKeys.getInt(1);
+                    }
+
+                    // Add prescription details
+                    String prescriptionDetailInsertQuery =
+                            "INSERT INTO Prescription_detail (prescription_id, medication, dosage, schedule) VALUES (?, ?, ?, ?)";
+                    PreparedStatement prescriptionDetailStmt = conn.prepareStatement(prescriptionDetailInsertQuery);
+
+                    for (int i = 0; i < medications.size(); i++) {
+                        prescriptionDetailStmt.setInt(1, prescriptionId);
+                        prescriptionDetailStmt.setString(2, medications.get(i));
+                        prescriptionDetailStmt.setString(3, dosages.get(i));
+                        prescriptionDetailStmt.setString(4, schedules.get(i));
+                        prescriptionDetailStmt.addBatch();
+                    }
+                    prescriptionDetailStmt.executeBatch();
+
+                    // Create Prescription object
+                    Prescription prescription = new Prescription(selectedPatient, currentDoctor);
+                    for (int i = 0; i < medications.size(); i++) {
+                        prescription.addMedication(medications.get(i), dosages.get(i), schedules.get(i));
+                    }
+                }
+
+                AlertDialogueBox.showAlert(Alert.AlertType.INFORMATION, "Success",
+                        "Feedback and prescription recorded successfully.");
+
+                // Reset fields
+                feedbackArea.clear();
+                prescriptionList.getItems().clear();
+                medications.clear();
+                dosages.clear();
+                schedules.clear();
+
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                AlertDialogueBox.showAlert(Alert.AlertType.ERROR, "Database Error",
+                        "Failed to save evaluation data. Please try again.");
+            }
+        });
+
+        prescriptionContainer.getChildren().addAll(
+                new HBox(10, medicationField, dosageField, scheduleField, addMedicationButton),
+                prescriptionList
+        );
+
+
+        mainLayout.getChildren().addAll(heading, patientDropdown, detailsContainer, feedbackArea, prescriptionContainer,
+                submitButton);
+
         return mainLayout;
     }
 

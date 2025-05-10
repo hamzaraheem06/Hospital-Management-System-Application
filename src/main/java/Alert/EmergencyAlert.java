@@ -1,17 +1,17 @@
 package Alert;
 
-import HealthData.VitalSign;
+import HealthData.Vitals;
 import Notifications.EmailNotification;
 import User.*;
 import java.util.ArrayList;
 
 public class EmergencyAlert {
-    private VitalSign vital;
+    private Vitals vital;
     private Patient patient;
     private EmailNotification emailNotification;
 
     // Constructor that takes a Vital object and an EmailNotification object
-    public EmergencyAlert(VitalSign vital, User sender, Patient patient) {
+    public EmergencyAlert(Vitals vital, User sender, Patient patient) {
         this.vital = vital;
         this.patient = patient;
     }
