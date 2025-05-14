@@ -206,8 +206,6 @@ public class Patient extends User {
         System.out.println("Appointment rescheduled successfully to: " + newDateTime);
     }
 
-
-
     @Override
     public String toString() {
         return String.format("\\nDetails:Name: %s\\tAge: %s\\tGender: %s\\tAddress:" +

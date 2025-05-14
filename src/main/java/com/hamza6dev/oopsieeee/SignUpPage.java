@@ -16,6 +16,26 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.time.LocalDate;
 
+/**
+ * Represents the sign-up page of the application where users can create a new account.
+ *
+ * <p>
+ * Functionalities include:
+ * <ul>
+ *     <li>Creating accounts for patients or doctors.</li>
+ *     <li>Dynamic form fields based on the selected account type (Patient or Doctor).</li>
+ *     <li>Field validations to ensure proper input from the user.</li>
+ *     <li>Database integration to insert user data into corresponding tables.</li>
+ * </ul>
+ * </p>
+ * <b>Navigation:</b>
+ * Users can navigate back to the login page after signing up or directly from the sign-up screen.
+ *
+ * <p><b>Database Interaction:</b> Once the form is submitted, the user details are inserted
+ * into the database, and the user is redirected to the login page.</p>
+ */
+
+
 public class SignUpPage extends Application {
 
     @Override
@@ -320,10 +340,10 @@ public class SignUpPage extends Application {
 
                 // redirecting user to dashboard once he/she is signed yp
                 try {
-                    Dashboard dashboard = new Dashboard(accountType, userId);
-                    dashboard.start((Stage) ((Node) e.getSource()).getScene().getWindow());
+                    LoginPage login = new LoginPage();
+                    login.start((Stage) ((Node) e.getSource()).getScene().getWindow());
                 } catch (Exception ex) {
-                    AlertDialogueBox.showAlert(Alert.AlertType.ERROR, "Application Error: ", "An error occurred while redirecting to the dashboard. Please log in again to continue.");
+                    AlertDialogueBox.showAlert(Alert.AlertType.ERROR, "Application Error: ", "An error occurred while redirecting to the login page.");
                     HelloApplication application = new HelloApplication();
                     application.start(primaryStage);
                     ex.printStackTrace();

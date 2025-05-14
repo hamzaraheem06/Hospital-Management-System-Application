@@ -320,14 +320,5 @@ public class AppointmentManager {
         return appointments.contains(appointment);
     }
 
-    public void viewAppointments() {
-        for (Appointment appointment : appointments) {
-            System.out.println(appointment);
-            System.out.println();
-        }
-    }
 
-//    public boolean isDuplicateAppointment(LocalDate date, Doctor doctor, User.Patient patient) {
-//
-//    }
 }

@@ -33,6 +33,10 @@ public class Admin extends User {
         this.appointmentManager = admin.appointmentManager;
     }
 
+    public Admin() {
+
+    }
+
 
     // Getters
 //    public String getAdminID() {

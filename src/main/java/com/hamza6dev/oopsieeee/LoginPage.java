@@ -15,6 +15,21 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import User.*;
 
+/**
+ * Represents a login page for the application.
+ * <p>
+ * This page allows users to:
+ * <ul>
+ *     <li>Log in to the application using their email and password.</li>
+ *     <li>Navigate to the sign-up page if they don't have an account.</li>
+ *     <li>Recover their account using the "Forgot Password" option.</li>
+ * </ul>
+ * <b>Database Integration:</b>
+ * This class validates user credentials (email and password) by accessing the database.
+ * Upon successful login, the user is redirected to a Dashboard corresponding to their account type.
+ *
+ */
+
 public class LoginPage extends Application {
 
     @Override

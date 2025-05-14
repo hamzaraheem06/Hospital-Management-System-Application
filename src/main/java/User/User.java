@@ -89,10 +89,7 @@ public abstract class User {
         this.email = email;
     }
 
-    public void setPassword(String password) throws InvalidPasswordException {
-        if (!isValidPassword(password)) {
-            throw new InvalidPasswordException("Invalid password! Password must match pattern: " + PASS_PATTERN);
-        }
+    public void setPassword(String password) {
         this.password = password;
     }
 

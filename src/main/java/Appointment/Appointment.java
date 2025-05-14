@@ -11,6 +11,15 @@ import java.time.format.DateTimeFormatter;
 
 // A central class for Appointment storage
 public class Appointment {
+    public AppointmentType getType() {
+        return type;
+    }
+
+    public enum AppointmentType {
+        IN_PERSON,
+        VIDEO
+    }
+
     // Enum for status
     public enum AppointmentStatus {
         PENDING,   // Waiting for approval
@@ -27,6 +36,7 @@ public class Appointment {
     private final Doctor doctor;
     private final Patient patient;
     private AppointmentStatus status;
+    private AppointmentType type;
 
     // Constructor
     public Appointment(LocalDateTime dateTime, Doctor doctor, Patient patient, AppointmentStatus status) throws InvalidAppointmentException {
@@ -100,6 +110,12 @@ public class Appointment {
     public String getTime() {
         // Format the time portion of the LocalDateTime
         return dateTime.toLocalTime().format(DateTimeFormatter.ofPattern("hh:mm a"));
+    }
+
+    public void setType(AppointmentType type) {
+        if (type != null) {
+            this.type = type;
+        }
     }
 
     public AppointmentStatus getStatus() {
